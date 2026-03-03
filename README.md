@@ -1,96 +1,160 @@
-# Verbiage
+# RAG Document Analysis Backend
 
-RAG-backed report verbiage for storm damage reports. Ingest documents, then ask questions and get overview and detailed copy suggested from similar cases. Built with **FastAPI**, **Postgres + pgvector**, and **OpenAI** (or **Ollama** when `OPENAI_API_KEY` is not set).
+FastAPI-based RAG backend for document ingestion, embeddings, pgvector search, and contextual Q&A workflows.
 
-*From field notes to finished copy.*
+The system ingests report documents, generates embeddings, stores them in **Postgres with pgvector**, and retrieves relevant context to generate suggested report language using an LLM.
 
----
-
-## What it does
-
-- **Ingest** — Store report text and metadata. Chunk, embed (OpenAI or Ollama), and index in Postgres with pgvector.
-- **List documents** — See what’s ingested: doc_id, title, source, chunk count, and a short snippet.
-- **Ask** — Describe the case (symptom, damage type, etc.). The app retrieves similar chunks (vector similarity in Postgres), then uses the LLM to suggest **overview** and **detailed image** verbiage.
-
-When `OPENAI_API_KEY` is set, embeddings and the LLM use OpenAI by default. Optional: set `EMBED_FALLBACK_TO_LOCAL` and/or `LLM_FALLBACK_TO_LOCAL` to use Ollama when OpenAI is unavailable. Without the key, the app uses Ollama only.
-
-Optional: ingest from **Google Drive** (read-only OAuth), and a simple **web UI** (tabs for Ingest / Ask, documents drawer). You can **upload a PDF** or paste text to ingest.
+Originally built to generate suggested verbiage for storm damage reports by analyzing prior case documentation.
 
 ---
 
-## Google Drive and Phase X
+# System Overview
 
-- **Current:** Google Drive ingest is available for **Google Docs** only. Use OAuth (`/auth/google`) then **POST /ingest/google-drive** with optional `folder_id` (ingest all Docs in that folder) or `file_ids`. See [setup_and_testing.md](setup_and_testing.md).
-- **Phase X (later):** Possible extensions: ingest **PDFs and other files from Drive**, or "watch a folder" / auto-sync when new files appear.
+This project demonstrates an end-to-end **RAG architecture** combining:
 
----
+- document ingestion and chunking  
+- embedding generation  
+- vector similarity search  
+- LLM-assisted response generation  
+- stateless API design suitable for deployment environments  
 
-## Why it’s relevant for AI deployment
-
-- **RAG pipeline in production shape:** embedding service (OpenAI or Ollama) + vector DB (Postgres/pgvector) + LLM (OpenAI or Ollama). Default is OpenAI when `OPENAI_API_KEY` is set; optional fallback to local Ollama.
-- **Config-driven:** Database URL, OpenAI API key, embedding/LLM URLs, timeouts, and rate limits come from environment variables—no hardcoded secrets; ready for 12-factor deployment.
-- **Stateless API with connection pooling:** Postgres pool per process; endpoints acquire/return a connection per request. Fits horizontal scaling behind a load balancer.
-- **Local or cloud:** Use OpenAI for speed and quality, or leave the key unset for Ollama-only (local) mode.
+The backend can run using either **OpenAI APIs** or **local models via Ollama**.
 
 ---
 
-## Tech stack
+# Key Features
 
-| Layer        | Choice                          |
-|-------------|----------------------------------|
-| API         | FastAPI, Pydantic                |
-| Database    | Postgres + pgvector (vector similarity in-DB) |
-| Embeddings  | OpenAI `text-embedding-3-small` (768 dim) or Ollama `nomic-embed-text` |
-| LLM         | OpenAI (e.g. `gpt-4o-mini`) or Ollama `llama3.1:8b` |
-| Optional    | Google Drive OAuth for ingest; Ollama fallback when OpenAI fails |
+## Document Ingestion
 
----
+- Upload PDF or text content  
+- Documents are chunked and embedded  
+- Embeddings stored in Postgres using pgvector  
 
-## Quick start
+## Vector Retrieval
 
-**Prerequisites:** Python 3.9+, Postgres with pgvector (or [Supabase](https://supabase.com)). For OpenAI: set `OPENAI_API_KEY` in `.env`. For Ollama-only: install [Ollama](https://ollama.ai) and leave the key unset.
+- Semantic similarity search over stored document chunks  
+- Relevant context retrieved for each query  
 
-```bash
-cd verbiage
-python3 -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-cp .env.example .env
-# Edit .env: set DATABASE_URL (required) and OPENAI_API_KEY for OpenAI; or leave key unset for Ollama-only
-uvicorn app.main:app --reload
-```
+## LLM Response Generation
 
-Open **http://localhost:8000/** for the web UI. Full setup (Postgres/Supabase, OpenAI or Ollama, env vars): see **[setup.md](setup.md)**.
+- Generates structured suggested text using retrieved context  
+- Supports OpenAI or local Ollama models  
 
----
+## Query Interface
 
-## API summary
+- Ask questions about previously ingested documents  
+- Returns contextual responses based on similar prior content  
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/health` | Health check |
-| POST | `/ingest` | Ingest text (body: `text`, optional `doc_id`, `title`, `source`, `chunking_options`) |
-| POST | `/ingest/file` | Ingest PDF file (multipart: `file`, optional `doc_id`, `title`, `source`, `chunk_size`, `chunk_overlap`) |
-| GET | `/documents` | List ingested documents |
-| POST | `/ask` | RAG query (body: `question`, optional `top_k`, `doc_id`) |
-| POST | `/ingest/google-drive` | Ingest Google Docs (body: optional `folder_id`, `file_ids`) |
-| GET | `/auth/google` | Start Google OAuth; callback at `/auth/google/callback` |
+## Optional Web UI
+
+- Lightweight interface for document ingestion and querying  
+- Useful for testing and demonstrations  
 
 ---
 
-## Logging
+# Architecture
 
-App logs (including LLM rate-limit / 429 events) are written to a rotating file so they don’t grow without bound:
+Typical request flow:
 
-- **Path:** `verbiage/logs/verbiage.log` (relative to the project root; when you run from inside `verbiage/`, the file is `logs/verbiage.log`).
-- **Rotation:** Max 500 KB per file, up to 3 backup files (`verbiage.log.1`, `verbiage.log.2`, `verbiage.log.3`).
-- At startup the server logs the exact path, e.g. `App log file: .../verbiage/logs/verbiage.log`.
+1. Document is uploaded or text is ingested  
+2. Content is chunked and embedded  
+3. Embeddings stored in Postgres using pgvector  
+4. User submits a query  
+5. Similar document chunks retrieved via vector search  
+6. LLM generates contextual response using retrieved context  
 
 ---
 
-## Docs
+# Technology Stack
 
-- **[setup.md](setup.md)** — Environment, Postgres, Ollama, install and run, troubleshooting.
-- **[supabase_migration.md](supabase_migration.md)** — Schema and migration for Supabase/Postgres.
-- **[setup_and_testing.md](setup_and_testing.md)** — Detailed testing, curl examples, web UI, Google Drive.
-- **[overview.md](overview.md)** — Product overview and roadmap.
+| Layer | Technology |
+|------|------------|
+| API | FastAPI |
+| Database | PostgreSQL |
+| Vector Store | pgvector |
+| Embeddings | OpenAI or Ollama |
+| LLM | OpenAI or Ollama |
+| Language | Python |
+
+---
+
+## Deployment Model
+
+The service is designed as a **containerized backend API** suitable for local development or deployment environments.
+
+The repository includes Docker configuration that runs:
+
+- FastAPI application
+- PostgreSQL with pgvector enabled
+
+Environment configuration follows **12-factor application principles** and is managed through environment variables.
+
+The only required configuration is an API key for the LLM provider.
+
+---
+
+## Running the System
+
+The application can be started using Docker.
+
+### 1. Clone the repository
+git clone https://github.com/systems-engineering-projects/rag-document-analysis-backend.git
+cd rag-document-analysis-backend
+
+---
+
+## Running the System
+
+The application can be started using Docker.
+
+### 1. Clone the repository
+git clone https://github.com/systems-engineering-projects/rag-document-analysis-backend.git
+cd rag-document-analysis-backend
+
+### 2. Configure environment variables
+Create a .env file:
+OPENAI_API_KEY=your_key_here
+
+### 3. Start the system
+docker compose up --build
+
+This will start:
+- FastAPI backend
+- PostgreSQL database with pgvector
+- embedding + retrieval pipeline
+
+The API will be available at:
+- http://localhost:8000
+- Optional: Local Models with Ollama
+- Instead of OpenAI, the system can use local models.
+
+Install Ollama and pull the required models:
+ollama pull nomic-embed-text
+ollama pull llama3.1:8b
+
+Then configure the application to use the Ollama provider.
+
+---
+
+# Purpose
+
+This project demonstrates practical engineering patterns for building AI-enabled backend systems:
+
+- Retrieval-Augmented Generation (RAG)
+- vector database integration with pgvector
+- containerized AI service deployment
+- configurable inference providers (OpenAI or local models)
+
+---
+
+# Future Extensions
+
+Potential improvements include:
+
+- automated document ingestion pipelines  
+- additional vector search optimizations  
+- streaming responses  
+- expanded document source integrations
+
+
+
