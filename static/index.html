@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Verbiage</title>
+  <style>
+    :root {
+      --bg: #f6f8fa;
+      --surface: #ffffff;
+      --border: #d0d7de;
+      --text: #24292f;
+      --text-muted: #57606a;
+      --accent: #0969da;
+      --accent-hover: #0550ae;
+      --on-accent: #ffffff;
+      --success: #1a7f37;
+      --error: #cf222e;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .layout {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 1rem 1.5rem 2rem;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 1.5rem;
+    }
+    h1 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin: 0;
+      margin-right: auto;
+    }
+    .tabs {
+      display: flex;
+      gap: 0.25rem;
+    }
+    .tabs button {
+      padding: 0.4rem 0.75rem;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    .tabs button:hover {
+      background: var(--surface);
+    }
+    .tabs button.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--on-accent);
+    }
+    .btn-docs {
+      padding: 0.4rem 0.75rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    .btn-docs:hover {
+      background: var(--border);
+    }
+    .panel {
+      display: none;
+    }
+    .panel.active {
+      display: block;
+    }
+    label {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 0.25rem;
+    }
+    input, textarea, select {
+      width: 100%;
+      padding: 0.5rem 0.6rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 0.95rem;
+      margin-bottom: 1rem;
+    }
+    textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+    button[type="submit"] {
+      padding: 0.5rem 1rem;
+      background: var(--accent);
+      border: none;
+      border-radius: 6px;
+      color: var(--on-accent);
+      font-weight: 500;
+      cursor: pointer;
+    }
+    button[type="submit"]:hover {
+      background: var(--accent-hover);
+    }
+    .message {
+      margin-top: 1rem;
+      padding: 0.75rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+    }
+    .message.success { background: rgba(63, 185, 80, 0.15); color: var(--success); }
+    .message.error { background: rgba(248, 81, 73, 0.15); color: var(--error); }
+    .chunks {
+      margin-top: 1rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+    .chunks summary { cursor: pointer; }
+    .chunk { margin: 0.5rem 0; padding: 0.5rem; background: var(--surface); border-radius: 4px; }
+
+    /* Drawer */
+    .drawer-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 100;
+      display: none;
+      align-items: stretch;
+      justify-content: flex-end;
+    }
+    .drawer-overlay.open { display: flex; }
+    .drawer {
+      width: min(400px, 90vw);
+      background: var(--surface);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .drawer-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .drawer-header h2 { margin: 0; font-size: 1rem; }
+    .drawer-close {
+      background: none;
+      border: none;
+      color: var(--text);
+      cursor: pointer;
+      padding: 0.25rem;
+      font-size: 1.25rem;
+      line-height: 1;
+    }
+    .drawer-body {
+      flex: 1;
+      overflow: auto;
+      padding: 1rem 1.25rem;
+    }
+    .doc-list { list-style: none; padding: 0; margin: 0; }
+    .doc-item {
+      padding: 0.75rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.9rem;
+    }
+    .doc-item:last-child { border-bottom: none; }
+    .doc-id { font-weight: 500; color: var(--accent); }
+    .doc-meta { color: var(--text-muted); font-size: 0.8rem; margin-top: 0.25rem; }
+    .doc-snippet { margin-top: 0.5rem; font-size: 0.8rem; opacity: 0.9; max-height: 3em; overflow: hidden; text-overflow: ellipsis; }
+    .drawer-loading, .drawer-empty { color: var(--text-muted); font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <header>
+      <h1>Verbiage</h1>
+      <nav class="tabs">
+        <button type="button" data-tab="ingest">Ingest</button>
+        <button type="button" data-tab="ask" class="active">Ask</button>
+      </nav>
+      <button type="button" class="btn-docs" id="btn-docs" aria-label="Show ingested documents">Documents</button>
+    </header>
+
+    <section id="panel-ingest" class="panel">
+      <form id="form-ingest">
+        <label for="ingest-text">Text to ingest</label>
+        <textarea id="ingest-text" name="text" placeholder="Paste report text…"></textarea>
+        <label for="ingest-file">Or upload a PDF</label>
+        <input type="file" id="ingest-file" name="file" accept=".pdf,application/pdf" />
+        <label for="ingest-doc_id">Doc ID (optional; default: generated)</label>
+        <input type="text" id="ingest-doc_id" name="doc_id" placeholder="e.g. report-2024-01" />
+        <label for="ingest-title">Title (optional)</label>
+        <input type="text" id="ingest-title" name="title" placeholder="Report title" />
+        <label for="ingest-source">Source (optional)</label>
+        <input type="text" id="ingest-source" name="source" placeholder="File or origin" />
+        <label for="ingest-chunk_size">Chunk size</label>
+        <input type="number" id="ingest-chunk_size" name="chunk_size" value="800" min="1" />
+        <label for="ingest-chunk_overlap">Chunk overlap</label>
+        <input type="number" id="ingest-chunk_overlap" name="chunk_overlap" value="100" min="0" />
+        <button type="submit">Ingest</button>
+      </form>
+      <div id="ingest-message" class="message" role="alert" hidden></div>
+    </section>
+
+    <section id="panel-ask" class="panel active">
+      <form id="form-ask">
+        <label for="ask-question">Question *</label>
+        <textarea id="ask-question" name="question" required placeholder="e.g. This report has hail damage to the roof. Give me overview and detailed image verbiage."></textarea>
+        <label for="ask-doc_id">Limit to document (optional)</label>
+        <select id="ask-doc_id" name="doc_id">
+          <option value="">All documents</option>
+        </select>
+        <label for="ask-top_k">Top K chunks</label>
+        <input type="number" id="ask-top_k" name="top_k" value="10" min="1" max="20" />
+        <button type="submit">Ask</button>
+      </form>
+      <div id="ask-message" class="message" role="alert" hidden></div>
+      <div id="ask-answer" hidden>
+        <h3>Answer</h3>
+        <div id="ask-answer-text"></div>
+        <details class="chunks">
+          <summary>Source chunks</summary>
+          <div id="ask-chunks"></div>
+        </details>
+      </div>
+    </section>
+  </div>
+
+  <div class="drawer-overlay" id="drawer-overlay" aria-hidden="true">
+    <div class="drawer">
+      <div class="drawer-header">
+        <h2>Ingested documents</h2>
+        <button type="button" class="drawer-close" id="drawer-close" aria-label="Close">×</button>
+      </div>
+      <div class="drawer-body">
+        <div id="drawer-loading" class="drawer-loading" hidden>Loading…</div>
+        <div id="drawer-empty" class="drawer-empty" hidden>No documents ingested yet.</div>
+        <ul class="doc-list" id="drawer-list"></ul>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const TAB_KEY = 'verbiage-tab';
+
+      function getApiBase() {
+        return window.location.origin;
+      }
+
+      // Tabs
+      const tabButtons = document.querySelectorAll('[data-tab]');
+      const panels = document.querySelectorAll('.panel');
+      function setTab(name) {
+        tabButtons.forEach(function (btn) {
+          btn.classList.toggle('active', btn.getAttribute('data-tab') === name);
+        });
+        panels.forEach(function (panel) {
+          panel.classList.toggle('active', panel.id === 'panel-' + name);
+        });
+        try { localStorage.setItem(TAB_KEY, name); } catch (e) {}
+      }
+      tabButtons.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          setTab(btn.getAttribute('data-tab'));
+        });
+      });
+      var saved = null;
+      try { saved = localStorage.getItem(TAB_KEY); } catch (e) {}
+      if (saved === 'ingest' || saved === 'ask') setTab(saved);
+
+      // Ingest form: either paste text (POST /ingest) or upload PDF (POST /ingest/file)
+      document.getElementById('form-ingest').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const msg = document.getElementById('ingest-message');
+        msg.hidden = true;
+        const form = e.target;
+        const fileInput = document.getElementById('ingest-file');
+        const file = fileInput.files && fileInput.files[0];
+        const usePdf = file && file.name && file.name.toLowerCase().endsWith('.pdf');
+
+        if (usePdf) {
+          const formData = new FormData();
+          formData.append('file', file);
+          if (form.doc_id.value.trim()) formData.append('doc_id', form.doc_id.value.trim());
+          if (form.title.value.trim()) formData.append('title', form.title.value.trim());
+          if (form.source.value.trim()) formData.append('source', form.source.value.trim());
+          formData.append('chunk_size', form.chunk_size.value || '800');
+          formData.append('chunk_overlap', form.chunk_overlap.value || '100');
+          try {
+            const res = await fetch(getApiBase() + '/ingest/file', {
+              method: 'POST',
+              body: formData
+            });
+            const data = await res.json().catch(function () { return {}; });
+            if (!res.ok) {
+              var detailStr = typeof data.detail === 'string' ? data.detail : (Array.isArray(data.detail) && data.detail[0] ? data.detail[0].msg : (data.detail && data.detail.msg ? data.detail.msg : null));
+            msg.textContent = detailStr || res.statusText || 'Ingest failed';
+              msg.className = 'message error';
+              msg.hidden = false;
+              return;
+            }
+            msg.textContent = 'Ingested: ' + (data.doc_id || '') + ' (' + (data.num_chunks || 0) + ' chunks).';
+            msg.className = 'message success';
+            msg.hidden = false;
+            fileInput.value = '';
+            refreshDocsSelect();
+          } catch (err) {
+            msg.textContent = 'Request failed: ' + err.message;
+            msg.className = 'message error';
+            msg.hidden = false;
+          }
+          return;
+        }
+
+        const text = form.text.value.trim();
+        if (!text) {
+          msg.textContent = 'Paste text or upload a PDF to ingest.';
+          msg.className = 'message error';
+          msg.hidden = false;
+          return;
+        }
+        const body = {
+          text: text,
+          chunking_options: {
+            chunk_size: parseInt(form.chunk_size.value, 10) || 800,
+            chunk_overlap: parseInt(form.chunk_overlap.value, 10) || 100
+          }
+        };
+        if (form.doc_id.value.trim()) body.doc_id = form.doc_id.value.trim();
+        if (form.title.value.trim()) body.title = form.title.value.trim();
+        if (form.source.value.trim()) body.source = form.source.value.trim();
+        try {
+          const res = await fetch(getApiBase() + '/ingest', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+          });
+          const data = await res.json().catch(function () { return {}; });
+          if (!res.ok) {
+            var detailStr = typeof data.detail === 'string' ? data.detail : (Array.isArray(data.detail) && data.detail[0] ? data.detail[0].msg : (data.detail && data.detail.msg ? data.detail.msg : null));
+            msg.textContent = detailStr || res.statusText || 'Ingest failed';
+            msg.className = 'message error';
+            msg.hidden = false;
+            return;
+          }
+          msg.textContent = 'Ingested: ' + (data.doc_id || '') + ' (' + (data.num_chunks || 0) + ' chunks).';
+          msg.className = 'message success';
+          msg.hidden = false;
+          refreshDocsSelect();
+        } catch (err) {
+          msg.textContent = 'Request failed: ' + err.message;
+          msg.className = 'message error';
+          msg.hidden = false;
+        }
+      });
+
+      // Ask form
+      function refreshDocsSelect() {
+        const select = document.getElementById('ask-doc_id');
+        fetch(getApiBase() + '/documents')
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            const docs = data.documents || [];
+            const keep = select.querySelector('option[value=""]');
+            select.innerHTML = '';
+            select.appendChild(keep);
+            docs.forEach(function (d) {
+              const opt = document.createElement('option');
+              opt.value = d.doc_id;
+              opt.textContent = (d.title || d.doc_id) + ' (' + d.num_chunks + ' chunks)';
+              select.appendChild(opt);
+            });
+          })
+          .catch(function () {});
+      }
+      refreshDocsSelect();
+
+      document.getElementById('form-ask').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const msg = document.getElementById('ask-message');
+        const answerBlock = document.getElementById('ask-answer');
+        const answerText = document.getElementById('ask-answer-text');
+        const chunksBlock = document.getElementById('ask-chunks');
+        msg.hidden = true;
+        answerBlock.hidden = true;
+        const form = e.target;
+        const body = {
+          question: form.question.value.trim(),
+          top_k: parseInt(form.top_k.value, 10) || 10
+        };
+        if (form.doc_id.value.trim()) body.doc_id = form.doc_id.value.trim();
+        try {
+          const res = await fetch(getApiBase() + '/ask', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+          });
+          const data = await res.json().catch(function () { return {}; });
+          if (!res.ok) {
+            msg.textContent = data.detail || res.statusText || 'Ask failed';
+            msg.className = 'message error';
+            msg.hidden = false;
+            return;
+          }
+          answerText.textContent = data.answer || '';
+          chunksBlock.innerHTML = '';
+          (data.top_chunks || []).forEach(function (c) {
+            const div = document.createElement('div');
+            div.className = 'chunk';
+            div.textContent = '[' + c.doc_id + '] ' + (c.content_snippet || '').slice(0, 200) + (c.content_snippet && c.content_snippet.length > 200 ? '…' : '');
+            chunksBlock.appendChild(div);
+          });
+          answerBlock.hidden = false;
+        } catch (err) {
+          msg.textContent = 'Request failed: ' + err.message;
+          msg.className = 'message error';
+          msg.hidden = false;
+        }
+      });
+
+      // Documents drawer
+      const overlay = document.getElementById('drawer-overlay');
+      const drawerList = document.getElementById('drawer-list');
+      const drawerLoading = document.getElementById('drawer-loading');
+      const drawerEmpty = document.getElementById('drawer-empty');
+
+      function openDrawer() {
+        overlay.classList.add('open');
+        overlay.setAttribute('aria-hidden', 'false');
+        drawerLoading.hidden = false;
+        drawerEmpty.hidden = true;
+        drawerList.innerHTML = '';
+        fetch(getApiBase() + '/documents')
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            drawerLoading.hidden = true;
+            const docs = data.documents || [];
+            if (docs.length === 0) {
+              drawerEmpty.hidden = false;
+              return;
+            }
+            docs.forEach(function (d) {
+              const li = document.createElement('li');
+              li.className = 'doc-item';
+              li.innerHTML =
+                '<span class="doc-id">' + escapeHtml(d.doc_id) + '</span>' +
+                '<div class="doc-meta">' + escapeHtml(d.title || '') + (d.source ? ' · ' + escapeHtml(d.source) : '') + ' · ' + (d.num_chunks || 0) + ' chunks</div>' +
+                (d.snippet ? '<div class="doc-snippet">' + escapeHtml(d.snippet) + '</div>' : '');
+              drawerList.appendChild(li);
+            });
+          })
+          .catch(function () {
+            drawerLoading.hidden = true;
+            drawerEmpty.textContent = 'Failed to load documents.';
+            drawerEmpty.hidden = false;
+          });
+      }
+      function closeDrawer() {
+        overlay.classList.remove('open');
+        overlay.setAttribute('aria-hidden', 'true');
+      }
+      function escapeHtml(s) {
+        if (s == null) return '';
+        var div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
+      }
+      document.getElementById('btn-docs').addEventListener('click', openDrawer);
+      document.getElementById('drawer-close').addEventListener('click', closeDrawer);
+      overlay.addEventListener('click', function (e) {
+        if (e.target === overlay) closeDrawer();
+      });
+    })();
+  </script>
+</body>
+</html>

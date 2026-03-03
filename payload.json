@@ -1,0 +1,116 @@
+Test Document for RAG Ingestion
+Title: Network Reliability Playbook – Edge Infrastructure Automation
+Doc ID suggestion: edge-rel-playbook-v1
+1. Overview
+The Edge Infrastructure Automation System (EIAS) is responsible for provisioning, monitoring, and validating network devices across 42 global data centers. The primary objective of the system is to reduce manual configuration drift and eliminate operational toil.
+The system follows a software-first approach:
+All device configurations are declared in Git.
+Changes are validated through preflight checks.
+Provisioning occurs via automated pipelines.
+Telemetry is continuously collected and evaluated.
+The design philosophy is “automate everything, validate twice.”
+2. Architecture
+The system consists of five core services:
+Config Registry
+Preflight Validator
+Provisioning Engine
+Telemetry Collector
+Alert & Remediation Service
+Each service communicates via internal REST APIs.
+All services are containerized and deployed using Kubernetes.
+Infrastructure provisioning is managed through Terraform.
+3. Config Registry
+The Config Registry stores desired-state configurations for:
+Core routers
+Edge switches
+Firewall appliances
+Load balancers
+Configurations are written in YAML and validated against JSON schemas.
+Every configuration change requires:
+Schema validation
+Policy validation
+Dry-run simulation
+Approval workflow
+Config versions are immutable. Rollbacks are implemented by redeploying a prior commit hash.
+4. Preflight Validator
+The Preflight Validator runs automated safety checks before any change is applied.
+Checks include:
+Device reachability (SSH or API)
+OS version compatibility
+Available memory and CPU
+NTP synchronization
+Required access credentials
+If any check fails, provisioning is aborted.
+The system enforces a “fail-fast” model — no partial execution is allowed during preflight failure.
+5. Provisioning Engine
+The Provisioning Engine executes configuration changes.
+Key properties:
+Idempotent execution
+Retry with exponential backoff
+Transactional grouping of related devices
+Structured logging
+If provisioning fails mid-execution:
+The system attempts automated rollback.
+If rollback fails, incident response is triggered.
+Provisioning actions are tracked in an audit log database.
+6. Telemetry Collector
+Telemetry data includes:
+Latency (ms)
+Packet loss (%)
+CPU utilization (%)
+Memory usage (%)
+Interface error rates
+Telemetry is scraped every 15 seconds.
+Metrics are stored in a time-series database.
+Prometheus is used for scraping and rule evaluation.
+Grafana is used for dashboards.
+7. Alert & Remediation Service
+Alerts are triggered when:
+Latency exceeds 120ms for 3 consecutive intervals
+Packet loss exceeds 2%
+CPU exceeds 85% for 5 minutes
+Alerts include:
+Severity level
+Affected devices
+Recent configuration changes
+Recommended remediation steps
+For known failure patterns, automated remediation can:
+Restart services
+Roll back config
+Shift traffic to redundant paths
+8. Security Model
+The system enforces:
+Role-based access control (RBAC)
+Short-lived credentials
+Encrypted secrets storage
+Audit logging of all API calls
+Secrets are never stored in plaintext in Git.
+Terraform state files are encrypted at rest.
+9. Failure Scenarios
+Scenario A – Partial Device Failure
+If one device in a transactional group fails provisioning:
+Remaining devices are paused.
+System attempts rollback.
+Incident ticket is created automatically.
+Scenario B – Telemetry Spike After Deployment
+If latency spikes within 10 minutes of a deployment:
+The deployment is flagged as suspect.
+Change metadata is attached to the alert.
+Automated rollback is considered.
+Scenario C – Drift Detection
+If running configuration differs from declared configuration:
+Drift event is logged.
+Remediation playbook is executed.
+Manual approval may be required depending on severity.
+10. Observability Principles
+The system tracks:
+Deployment success rate
+Mean time to detect (MTTD)
+Mean time to recovery (MTTR)
+Change failure rate
+Structured logs include:
+Correlation IDs
+Device identifiers
+Execution stage
+Duration metrics
+All services expose a /health endpoint.
