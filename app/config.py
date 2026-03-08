@@ -2,6 +2,7 @@
 Config from environment: database, embedding/LLM URLs and models, Google Drive.
 Sensible defaults where safe; no default secrets.
 """
+#updating now
 
 import os
 from pathlib import Path
