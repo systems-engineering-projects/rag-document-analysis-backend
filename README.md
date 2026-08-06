@@ -8,8 +8,7 @@
 
 ## Try it
 
-**Live demo — no login:** [verbiage-demo-2.onrender.com](https://verbiage-demo-2.onrender.com)
-
+**Live demo — no login:** [rag-document-analysis-backend.onrender.com](https://rag-document-analysis-backend.onrender.com)
 Free-tier hosting, so the first request wakes the service — give it about 30 seconds
 to spin up. Prefer not to wait? The examples below show the same behavior, including
 the refusal path.
